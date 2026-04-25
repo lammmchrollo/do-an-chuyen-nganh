@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: osm
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+        - name: payment-service
+          image: nguyenducmanh247/osm-payment-service:latest
+          ports:
+            - containerPort: 4004
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+  namespace: osm
+spec:
+  type: ClusterIP
+  selector:
+    app: payment-service
+  ports:
+    - protocol: TCP
+      port: 4004
+      targetPort: 4004
