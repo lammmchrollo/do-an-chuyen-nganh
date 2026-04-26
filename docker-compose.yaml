@@ -10,11 +10,13 @@ services:
     restart: always
 
   user-service:
-    image: osm-user-service:latest
+    build: ./user-service
+    container_name: user-service
     ports:
       - "4001:4001"
     environment:
       - MONGO_URI=mongodb://mongodb:27017/userservice
+      - JWT_SECRET=food_delivery_jwt_secret_2026
     depends_on:
       - mongodb
     networks:
@@ -22,7 +24,7 @@ services:
     restart: always
 
   restaurant-service:
-    image: osm-restaurant-service:latest
+    build: ./restaurant-service
     container_name: restaurant-service
     ports:
       - "4002:4002"
@@ -35,12 +37,14 @@ services:
     restart: always
 
   order-service:
-    image: osm-order-service:latest
+    build: ./order-service
     container_name: order-service
     ports:
       - "4003:4003"
     environment:
       - MONGO_URI=mongodb://mongodb:27017/orderservice
+      - DELIVERY_SERVICE_URL=http://delivery-service:4005
+      - NOTIFICATION_SERVICE_URL=http://notification-service:4006
     depends_on:
       - mongodb
     networks:
@@ -48,7 +52,7 @@ services:
     restart: always
 
   payment-service:
-    image: osm-payment-service:latest
+    build: ./payment-service
     container_name: payment-service
     ports:
       - "4004:4004"
@@ -85,7 +89,7 @@ services:
     restart: always
 
   frontend:
-    image: osm-frontend:latest
+    build: ./frontend
     container_name: frontend
     ports:
       - "5173:80"

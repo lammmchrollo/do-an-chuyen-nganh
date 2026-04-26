@@ -15,41 +15,53 @@ mongoose
   .then(async () => {
     console.log("✅ Connected to MongoDB successfully");
 
+    const foodSeedData = [
+      {
+        name: "Com ga xoi mo",
+        description: "Com ga gion, dua chua, nuoc mam toi ot",
+        price: 55000,
+        category: "Com"
+      },
+      {
+        name: "Bun bo Hue",
+        description: "Nuoc dung dam vi, bo bap, gio heo, cha",
+        price: 60000,
+        category: "Bun"
+      },
+      {
+        name: "Pho bo tai",
+        description: "Pho bo tai mem, hanh, rau thom",
+        price: 65000,
+        category: "Pho"
+      },
+      {
+        name: "Tra sua tran chau",
+        description: "Tra sua beo nhe, tran chau den dai gion",
+        price: 35000,
+        category: "Do uong"
+      },
+      {
+        name: "Ga ran sot cay",
+        description: "2 mieng ga ran, sot cay Han Quoc",
+        price: 79000,
+        category: "Do an nhanh"
+      }
+    ];
+
     const count = await Product.estimatedDocumentCount();
     if (count === 0) {
-      await Product.insertMany([
-        {
-          name: "Web Development",
-          description: "Design and develop modern responsive websites",
-          price: 500,
-          category: "Web",
-        },
-        {
-          name: "Mobile App Development",
-          description: "Build Android and iOS apps, either native or cross-platform",
-          price: 800,
-          category: "Mobile",
-        },
-        {
-          name: "UI/UX Design",
-          description: "Design beautiful and user-friendly interfaces",
-          price: 400,
-          category: "Design",
-        },
-        {
-          name: "Backend API Development",
-          description: "Build RESTful API systems with Node.js",
-          price: 600,
-          category: "Backend",
-        },
-        {
-          name: "DevOps Setup",
-          description: "CI/CD, Docker, Kubernetes, optimize system operations",
-          price: 700,
-          category: "Infrastructure",
-        },
-      ]);
-      console.log("✅ Seeded 5 sample services into MongoDB");
+      await Product.insertMany(foodSeedData);
+      console.log("✅ Seeded food delivery menu items into MongoDB");
+    } else {
+      const legacyData = await Product.findOne({
+        category: { $in: ["Web", "Mobile", "Design", "Backend", "Infrastructure"] }
+      });
+
+      if (legacyData) {
+        await Product.deleteMany({});
+        await Product.insertMany(foodSeedData);
+        console.log("✅ Replaced legacy sample services with food delivery menu items");
+      }
     }
   })
   .catch((err) => console.error("❌ MongoDB Error:", err));

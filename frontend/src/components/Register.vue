@@ -1,10 +1,17 @@
 <template>
-  <div class="auth-form">
-    <h2>🔐 Register</h2>
-    <input v-model="email" placeholder="Email" class="input" />
-    <input v-model="password" type="password" placeholder="Password" class="input" />
-    <button @click="register" class="button">Register</button>
-    <p v-if="error" class="error">{{ error }}</p>
+  <div class="auth-page fade-up">
+    <div class="auth-form">
+      <h2>Dang ky</h2>
+      <p class="sub">Tao tai khoan moi de bat dau dat don.</p>
+
+      <input v-model="email" placeholder="Email" class="input" />
+      <input v-model="password" type="password" placeholder="Password" class="input" />
+
+      <button @click="register" class="button">Dang ky</button>
+      <router-link to="/login" class="link">Da co tai khoan? Dang nhap</router-link>
+
+      <p v-if="error" class="error">{{ error }}</p>
+    </div>
   </div>
 </template>
 
@@ -45,33 +52,75 @@ export default {
 </script>
 
 <style scoped>
-.auth-form {
-  max-width: 400px;
-  margin: 20px auto;
+.auth-page {
+  min-height: calc(100vh - 80px);
+  display: grid;
+  place-items: center;
 }
+
+.auth-form {
+  width: min(460px, 100%);
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 26px 22px;
+  border: 1px solid rgba(23, 33, 47, 0.09);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+}
+
+h2 {
+  font-size: 30px;
+  color: #102437;
+}
+
+.sub {
+  color: #58687e;
+  margin: 8px 0 14px;
+}
+
 .input {
   width: 100%;
-  padding: 8px;
+  padding: 11px 12px;
   margin: 6px 0;
-  background: #2c2c2c;
-  color: white;
-  border: 1px solid #444;
-  border-radius: 5px;
+  background: #f8fbff;
+  color: #1f2937;
+  border: 1px solid #cad8e4;
+  border-radius: 10px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+
+.input:focus {
+  outline: none;
+  border-color: #0e7490;
+  box-shadow: 0 0 0 4px rgba(14, 116, 144, 0.18);
+}
+
 .button {
   width: 100%;
-  padding: 10px;
-  margin-top: 8px;
-  background: #2980b9;
+  padding: 11px;
+  margin-top: 10px;
+  background: linear-gradient(135deg, #0e7490, #155e75);
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 10px;
   cursor: pointer;
+  font-weight: 700;
+  transition: transform 0.2s ease, filter 0.2s ease;
 }
+
 .button:hover {
-  background: #1f6694;
+  transform: translateY(-1px);
+  filter: brightness(1.03);
 }
+
+.link {
+  margin-top: 12px;
+  display: inline-block;
+  color: #0f5f77;
+  font-weight: 600;
+}
+
 .error {
-  color: #ff4d4f;
+  color: #dc2626;
+  margin-top: 10px;
 }
 </style>

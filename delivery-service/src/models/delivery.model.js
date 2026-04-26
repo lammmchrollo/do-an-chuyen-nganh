@@ -17,7 +17,9 @@ const deliverySchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
+        "searching_driver",
         "assigned",
+        "accepted",
         "picked_up",
         "on_the_way",
         "delivered",

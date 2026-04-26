@@ -19,15 +19,26 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).json({ error: "User not found" });
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: "User not found" });
 
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) return res.status(401).json({ error: "Incorrect password" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ error: "Incorrect password" });
 
-  const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET);
-  res.json({ message: "Login successful", token });
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ error: "JWT_SECRET is not configured" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET
+    );
+    res.json({ message: "Login successful", token });
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
 };
 
 exports.checkEmail = async (req, res) => {

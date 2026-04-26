@@ -1,11 +1,13 @@
 <template>
-  <div class="product-list">
-    <h2>📦 Service List</h2>
-    <div v-for="p in products" :key="p._id" class="product-card">
-      <h3>
-        {{ p.name }} <span>- {{ p.price }} đ</span>
-      </h3>
-      <p>{{ p.description }}</p>
+  <div class="product-list fade-up">
+    <h2>Danh sach dich vu</h2>
+    <p class="intro">Chon dich vu phu hop, tao don nhanh va theo doi trang thai theo thoi gian thuc.</p>
+    <div class="grid">
+      <article v-for="p in products" :key="p._id" class="product-card">
+        <h3>{{ p.name }}</h3>
+        <p>{{ p.description }}</p>
+        <strong>{{ p.price }} đ</strong>
+      </article>
     </div>
   </div>
 </template>
@@ -30,25 +32,58 @@ export default {
 
 <style scoped>
 .product-list {
-  max-width: 800px;
-  margin: 30px auto;
+  max-width: 980px;
+  margin: 14px auto;
+  text-align: left;
 }
+
+h2 {
+  font-size: clamp(24px, 3.6vw, 34px);
+  color: #0f253a;
+}
+
+.intro {
+  margin-top: 8px;
+  color: #5a6778;
+}
+
+.grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
 .product-card {
-  background: #1e1e1e;
-  border: 1px solid #333;
-  padding: 15px 20px;
-  border-radius: 10px;
-  margin-bottom: 15px;
-}
-.product-card h3 {
+  background: linear-gradient(165deg, #111216 0%, #1a1e26 65%, #243041 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px;
+  border-radius: 14px;
+  min-height: 184px;
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 5px;
-  font-size: 1.1em;
-  color: #f1c40f;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.35);
+}
+
+.product-card h3 {
+  font-size: 1.06rem;
+  color: #ffe08a;
+}
+
 .product-card p {
-  color: #ccc;
-  font-size: 0.95em;
+  color: #d5deea;
+  font-size: 0.95rem;
+  flex: 1;
+}
+
+.product-card strong {
+  color: #62f0ad;
+  font-size: 1.02rem;
 }
 </style>

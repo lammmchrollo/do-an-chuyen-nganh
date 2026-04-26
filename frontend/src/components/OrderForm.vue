@@ -1,23 +1,28 @@
 <template>
-  <div class="order-form">
-    <h2>📝 Create Order</h2>
+  <div class="order-form fade-up">
+    <h2>Tao don hang</h2>
 
     <select v-model="selectedProductId" @change="updateSelectedProduct" class="input">
-      <option disabled value="">-- Select Service --</option>
+      <option disabled value="">-- Chon mon an --</option>
       <option v-for="p in products" :key="p._id" :value="p._id">
         {{ p.name }} ({{ p.price }} đ)
       </option>
     </select>
 
-    <input type="number" v-model.number="quantity" placeholder="Quantity" min="1" class="input" />
+    <input type="number" v-model.number="quantity" placeholder="So luong" min="1" class="input" />
+    <input
+      v-model="deliveryAddress"
+      placeholder="Dia chi giao hang (VD: 123 Nguyen Trai, Quan 5)"
+      class="input"
+    />
 
     <div v-if="selectedProduct" class="info">
-      💡 <strong>Description:</strong> {{ selectedProduct.description }} <br />
-      💸 <strong>Service Price:</strong> {{ selectedProduct.price }} đ <br />
-      🧮 <strong>Total Price:</strong> <span style="color: #2ecc71">{{ totalPrice }} đ</span>
+      <strong>Mo ta:</strong> {{ selectedProduct.description }} <br />
+      <strong>Don gia:</strong> {{ selectedProduct.price }} đ <br />
+      <strong>Tong tien:</strong> <span class="price">{{ totalPrice }} đ</span>
     </div>
 
-    <button @click="submitOrder" class="button">Create Order</button>
+    <button @click="submitOrder" class="button">Tao don</button>
     <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
   </div>
 </template>
@@ -32,6 +37,7 @@ export default {
       selectedProductId: "",
       selectedProduct: null,
       products: [],
+      deliveryAddress: "",
       errorMsg: "",
     };
   },
@@ -62,12 +68,18 @@ export default {
         return;
       }
 
+      if (!this.deliveryAddress.trim()) {
+        this.errorMsg = "❌ Vui long nhap dia chi giao hang!";
+        return;
+      }
+
       try {
         const orderRes = await API.order.post("/", {
           userEmail: email,
           productId: this.selectedProductId,
           quantity: this.quantity,
           totalPrice: this.totalPrice,
+          deliveryAddress: this.deliveryAddress,
         });
         alert("✅ Order created successfully! Order ID: " + orderRes.data._id);
 
@@ -81,6 +93,7 @@ export default {
         this.selectedProductId = "";
         this.selectedProduct = null;
         this.quantity = 1;
+        this.deliveryAddress = "";
         window.dispatchEvent(new Event("order-updated"));
       } catch (err) {
         console.error("❌ Error creating order:", err);
@@ -101,45 +114,71 @@ export default {
 
 <style scoped>
 .order-form {
-  max-width: 400px;
-  margin: 30px auto;
-  background: #1f1f1f;
+  max-width: 520px;
+  margin: 16px auto;
+  background: #ffffff;
+  border: 1px solid rgba(23, 33, 47, 0.1);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.11);
   padding: 20px;
-  border-radius: 10px;
+  border-radius: 14px;
   text-align: left;
 }
+
+h2 {
+  font-size: 1.45rem;
+  color: #12253a;
+  margin-bottom: 8px;
+}
+
 .input {
   width: 100%;
   padding: 10px;
   margin: 8px 0;
-  background: #2c2c2c;
-  color: white;
-  border: 1px solid #444;
-  border-radius: 5px;
+  background: #f8fbff;
+  color: #1f2937;
+  border: 1px solid #cad8e4;
+  border-radius: 10px;
 }
+
+.input:focus {
+  outline: none;
+  border-color: #0e7490;
+  box-shadow: 0 0 0 4px rgba(14, 116, 144, 0.17);
+}
+
 .button {
   width: 100%;
-  padding: 10px;
-  background: #2ecc71;
+  padding: 11px;
+  background: linear-gradient(135deg, #14b26a, #0d9a5a);
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 10px;
   margin-top: 10px;
   font-weight: bold;
   cursor: pointer;
+  transition: transform 0.2s ease;
 }
+
 .button:hover {
-  background: #27ae60;
+  transform: translateY(-1px);
 }
+
 .error {
-  color: #ff4d4f;
+  color: #dc2626;
   margin-top: 10px;
 }
+
 .info {
-  background: #2c2c2c;
+  background: #f4f9ff;
+  border: 1px solid #d4e5f3;
+  color: #314154;
   padding: 10px;
-  border-radius: 5px;
+  border-radius: 10px;
   margin-top: 10px;
   line-height: 1.6;
+}
+
+.price {
+  color: #0f9d5d;
 }
 </style>

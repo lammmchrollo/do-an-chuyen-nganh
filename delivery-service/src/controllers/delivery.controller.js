@@ -5,6 +5,15 @@ const Delivery = require("../models/delivery.model");
 const NOTIFICATION_SERVICE_URL =
   process.env.NOTIFICATION_SERVICE_URL || "http://notification-service:4006";
 
+function normalizeText(value) {
+  return (value || "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 async function sendNotification(orderId, message, status) {
   try {
     await axios.post(`${NOTIFICATION_SERVICE_URL}/api/notifications`, {
@@ -63,7 +72,7 @@ exports.updateDriverStatus = async (req, res) => {
 
 exports.assignDriver = async (req, res) => {
   try {
-    const { orderId, deliveryAddress, note } = req.body;
+    const { orderId, deliveryAddress, note, preferredLocation } = req.body;
 
     if (!orderId || !deliveryAddress) {
       return res.status(400).json({
@@ -71,16 +80,47 @@ exports.assignDriver = async (req, res) => {
       });
     }
 
+    const existingDelivery = await Delivery.findOne({
+      orderId,
+      status: { $ne: "cancelled" }
+    }).populate("driverId");
+
+    if (existingDelivery) {
+      return res.status(400).json({
+        error: "Delivery already assigned for this order",
+        delivery: existingDelivery
+      });
+    }
+
     const availableDrivers = await Driver.find({ status: "available" });
 
     if (availableDrivers.length === 0) {
+      await sendNotification(
+        orderId,
+        `Don hang ${orderId} dang cho tai xe vi hien tai khong co tai xe ranh`,
+        "waiting_for_driver"
+      );
+
       return res.status(400).json({
         error: "No available driver"
       });
     }
 
-    const randomIndex = Math.floor(Math.random() * availableDrivers.length);
-    const selectedDriver = availableDrivers[randomIndex];
+    const preferred = normalizeText(preferredLocation || deliveryAddress);
+
+    let candidateDrivers = availableDrivers;
+    if (preferred) {
+      const matched = availableDrivers.filter((driver) =>
+        normalizeText(driver.currentLocation).includes(preferred)
+      );
+
+      if (matched.length > 0) {
+        candidateDrivers = matched;
+      }
+    }
+
+    const randomIndex = Math.floor(Math.random() * candidateDrivers.length);
+    const selectedDriver = candidateDrivers[randomIndex];
 
     selectedDriver.status = "busy";
     await selectedDriver.save();
@@ -165,7 +205,7 @@ exports.updateDeliveryStatus = async (req, res) => {
       return res.status(404).json({ error: "Delivery not found" });
     }
 
-    if (status === "delivered" || status === "cancelled") {
+    if ((status === "delivered" || status === "cancelled") && delivery.driverId) {
       await Driver.findByIdAndUpdate(delivery.driverId._id, {
         status: "available"
       });
