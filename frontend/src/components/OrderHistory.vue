@@ -12,29 +12,29 @@
           <span>{{ formatDate(order.createdAt) }}</span>
         </div>
         <div class="meta">
-          <span>Thanh toan: <strong>{{ order.paymentStatus || 'unpaid' }}</strong></span>
+          <span>Thanh toán: <strong>{{ getPaymentStatusLabel(order.paymentStatus || 'unpaid') }}</strong></span>
           <span>Tam tinh: {{ order.subtotal || 0 }} đ</span>
         </div>
         <div class="meta status-row">
           <span>
             Trang thai don:
-            <strong :class="['status', order.status || 'pending']">{{ order.status || "pending" }}</strong>
+            <strong :class="['status', order.status || 'pending']">{{ getOrderStatusLabel(order.status || "pending") }}</strong>
           </span>
           <span v-if="order.deliveryAddress">{{ order.deliveryAddress }}</span>
         </div>
         <div class="actions">
-          <button @click="updateStatus(order._id, 'confirmed')">Confirmed</button>
-          <button @click="updateStatus(order._id, 'preparing')">Preparing</button>
-          <button @click="updateStatus(order._id, 'ready')">Ready + Assign</button>
+          <button @click="updateStatus(order._id, 'confirmed')">Xác nhận</button>
+          <button @click="updateStatus(order._id, 'preparing')">Đang chuẩn bị</button>
+          <button @click="updateStatus(order._id, 'ready')">Sẵn sàng + Gán tài xế</button>
           <button
             v-if="order.status === 'waiting_for_driver'"
             class="retry"
             @click="dispatchOrder(order._id)"
           >
-            Thu lai gan tai xe
+            Thử lại gán tài xế
           </button>
-          <button @click="updateStatus(order._id, 'completed')">Completed</button>
-          <button class="cancel" @click="updateStatus(order._id, 'cancelled')">Cancelled</button>
+          <button @click="updateStatus(order._id, 'completed')">Hoàn thành</button>
+          <button class="cancel" @click="updateStatus(order._id, 'cancelled')">Hủy đơn</button>
         </div>
       </li>
     </ul>
@@ -52,6 +52,27 @@ export default {
     };
   },
   methods: {
+    getOrderStatusLabel(status) {
+      const map = {
+        pending: "CHỜ XÁC NHẬN",
+        confirmed: "ĐÃ XÁC NHẬN",
+        preparing: "ĐANG CHUẨN BỊ",
+        ready: "SẴN SÀNG GIAO",
+        waiting_for_driver: "CHỜ TÀI XẾ",
+        delivering: "ĐANG GIAO",
+        completed: "HOÀN THÀNH",
+        cancelled: "ĐÃ HỦY",
+      };
+      return map[status] || status;
+    },
+    getPaymentStatusLabel(status) {
+      const map = {
+        unpaid: "chưa thanh toán",
+        paid: "đã thanh toán",
+        refunded: "đã hoàn tiền",
+      };
+      return map[status] || status;
+    },
     async fetchOrders() {
       const email = localStorage.getItem("email");
       if (!email) return;
@@ -83,7 +104,7 @@ export default {
       }
     },
     formatDate(d) {
-      return new Date(d).toLocaleString("en-US");
+      return new Date(d).toLocaleString("vi-VN");
     },
     getOrderTitle(order) {
       if (!order.items || order.items.length === 0) {

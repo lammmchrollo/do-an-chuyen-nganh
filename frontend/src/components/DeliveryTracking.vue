@@ -14,11 +14,11 @@
           <div class="track-head">
             <strong>Don: {{ row.orderId }}</strong>
             <span :class="['badge', row.delivery ? row.delivery.status : (row.orderStatus || 'pending')]">
-              {{ row.delivery ? row.delivery.status : (row.orderStatus || 'not_assigned') }}
+              {{ getDeliveryStatusLabel(row.delivery ? row.delivery.status : (row.orderStatus || 'not_assigned')) }}
             </span>
           </div>
 
-          <p class="muted">Trang thai don hang: <strong>{{ row.orderStatus || 'pending' }}</strong></p>
+          <p class="muted">Trang thai don hang: <strong>{{ getOrderStatusLabel(row.orderStatus || 'pending') }}</strong></p>
           <p class="eta">ETA du kien: {{ getEta(row) }}</p>
 
           <template v-if="row.delivery">
@@ -77,6 +77,33 @@ export default {
     };
   },
   methods: {
+    getOrderStatusLabel(status) {
+      const map = {
+        pending: "Chờ xác nhận",
+        confirmed: "Đã xác nhận",
+        preparing: "Đang chuẩn bị",
+        ready: "Sẵn sàng giao",
+        waiting_for_driver: "Chờ tài xế",
+        delivering: "Đang giao",
+        completed: "Hoàn thành",
+        cancelled: "Đã hủy",
+      };
+      return map[status] || status;
+    },
+    getDeliveryStatusLabel(status) {
+      const map = {
+        not_assigned: "Chưa gán tài xế",
+        searching_driver: "Đang tìm tài xế",
+        assigned: "Đã gán tài xế",
+        accepted: "Tài xế đã nhận",
+        picked_up: "Đã lấy hàng",
+        on_the_way: "Đang trên đường giao",
+        delivering: "Đang giao",
+        delivered: "Đã giao",
+        cancelled: "Đã hủy",
+      };
+      return map[status] || this.getOrderStatusLabel(status);
+    },
     async fetchTrackingData() {
       this.loading = true;
       const email = localStorage.getItem("email");

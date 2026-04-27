@@ -56,7 +56,7 @@
         <li v-for="o in orders" :key="o._id" class="order-item">
           <div class="top">
             <strong>{{ o._id }}</strong>
-            <span class="status">{{ o.status }}</span>
+            <span class="status">{{ getOrderStatusLabel(o.status) }}</span>
           </div>
           <p>Khach: {{ o.userEmail }}</p>
           <p>Tong tien: {{ o.totalPrice }} đ</p>
@@ -101,6 +101,19 @@ export default {
     };
   },
   methods: {
+    getOrderStatusLabel(status) {
+      const map = {
+        pending: "Chờ xác nhận",
+        confirmed: "Đã xác nhận",
+        preparing: "Đang chuẩn bị",
+        ready: "Sẵn sàng giao",
+        waiting_for_driver: "Chờ tài xế",
+        delivering: "Đang giao",
+        completed: "Hoàn thành",
+        cancelled: "Đã hủy",
+      };
+      return map[status] || status;
+    },
     async loadRestaurants() {
       const res = await API.restaurant.get("/restaurants");
       this.restaurants = res.data;

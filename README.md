@@ -2,9 +2,9 @@
 
 Du an xay dung nen tang dat do an theo kien truc microservices, co day du luong nghiep vu:
 
-- Khach hang: tim nha hang, chon mon, gio hang, dat don, theo doi trang thai don.
-- Nha hang: quan ly menu, nhan/tu choi don, cap nhat tien do xu ly don.
-- Van chuyen: gan tai xe ngau nhien trong danh sach ranh, cap nhat trang thai giao.
+- Khách hàng: tìm nhà hàng, chọn món, giỏ hàng, đặt đơn, theo dõi trạng thái đơn.
+- Nhà hàng: quản lý menu, nhận/từ chối đơn, cập nhật tiến độ xử lý đơn.
+- Vận chuyển (Tài xế): gán tài xế ngẫu nhiên trong danh sách rảnh, cập nhật trạng thái giao hàng.
 - Thanh toan: mo phong thanh cong/that bai va hoan tien (refund).
 - Thong bao: luu lich su thong bao, day su kien qua Socket.io; frontend su dung short-polling de cap nhat UI theo thoi gian gan thuc.
 
@@ -151,22 +151,28 @@ API chinh:
 - GET /api/notifications/order/:orderId
 - PATCH /api/notifications/:id/read
 
-## 6. Frontend da trien khai
+## 6. Frontend đã triển khai (Thao tác của các nhóm User)
 
-### Khach hang
+### Khách hàng (Customer)
 
-- Tim nha hang/mon an.
-- Them mon vao gio hang.
-- Dat don va thanh toan.
-- Xem lich su don hang.
-- Theo doi giao hang theo polling dinh ky (khong can reload trang).
+- Tìm kiếm nhà hàng và món ăn.
+- Thêm món ăn vào giỏ hàng.
+- Tiến hành đặt đơn và thanh toán đơn hàng.
+- Xem lịch sử các đơn hàng đã đặt.
+- Theo dõi trạng thái giao hàng theo thời gian thực (real-time thông qua polling, không cần tải lại trang).
 
-### Nha hang
+### Quản lý Nhà hàng (Restaurant)
 
-- Chon/tao nha hang.
-- Them, an/hien, xoa mon an.
-- Nhan don, cap nhat tien do, tu choi don.
-- Tu dong goi refund neu tu choi don da paid.
+- Chọn hoặc tạo mới thông tin nhà hàng quản lý.
+- Thêm mới, ẩn/hiện, hoặc xóa món ăn khỏi menu.
+- Nhận đơn hàng mới, cập nhật tiến độ xử lý (chuẩn bị, hoàn thành), hoặc từ chối đơn hàng.
+- Hệ thống tự động gọi API hoàn tiền (refund) nếu nhà hàng từ chối đơn đã được thanh toán (paid).
+
+### Tài xế giao hàng (Driver)
+
+- Đăng nhập và cập nhật trạng thái làm việc (Rảnh / Bận / Ngoại tuyến).
+- Chấp nhận đơn hàng được hệ thống tự động gán.
+- Cập nhật trạng thái đang giao, và xác nhận hoàn thành khi đã giao xong cho khách.
 
 ## 7. Chay local bang Docker Compose
 
@@ -193,15 +199,15 @@ Dung he thong:
 docker compose down
 ```
 
-## 8. Test nhanh nghiep vu
+## 8. Test nhanh nghiệp vụ hệ thống
 
-1. Dang ky customer va dang nhap.
-2. Tim nha hang, them mon vao gio, dat don.
-3. Kiem tra payment duoc tao va order paymentStatus = paid.
-4. Dang ky/ dang nhap role restaurant, vao dashboard nha hang.
-5. Nhan don -> preparing -> ready (he thong thu gan tai xe).
-6. Theo doi trong man hinh tracking cua customer.
-7. Thu tu choi don paid tu restaurant dashboard de kiem tra refund.
+1. Khách hàng: Đăng ký tài khoản (Role: Customer) và đăng nhập.
+2. Khách hàng: Tìm nhà hàng, thêm món ăn vào giỏ, đặt và thanh toán đơn hàng.
+3. Kểm tra trạng thái đơn hàng (paymentStatus = paid).
+4. Nhà hàng: Đăng ký/đăng nhập với vai trò Restaurant, vào trang Dashboard chủ cửa hàng.
+5. Nhà hàng: Nhận đơn hàng vừa tạo, cập nhật trạng thái chuẩn bị (preparing), sau đó sẵn sàng giao (ready). Hệ thống lúc này tự động gán tài xế rảnh.
+6. Khách hàng: Theo dõi tiến độ đơn hàng trên màn hình Delivery Tracking.
+7. Thử nghiệm: Thử từ chối một đơn hàng đã chuyển tiền (paid) từ bên phía Nhà hàng để kiểm tra tính năng hoàn tiền (refund).
 
 ## 9. Kubernetes va Jenkins
 
