@@ -4,12 +4,16 @@
     <ul v-if="orders.length > 0" class="order-list">
       <li v-for="order in orders" :key="order._id" class="order-item">
         <div class="row">
-          <strong>{{ getProductName(order.productId) }}</strong>
+          <strong>{{ getOrderTitle(order) }}</strong>
           <span class="price">{{ order.totalPrice }} đ</span>
         </div>
         <div class="meta">
-          <span>So luong: {{ order.quantity }}</span>
+          <span>So mon: {{ order.items ? order.items.length : 0 }}</span>
           <span>{{ formatDate(order.createdAt) }}</span>
+        </div>
+        <div class="meta">
+          <span>Thanh toan: <strong>{{ order.paymentStatus || 'unpaid' }}</strong></span>
+          <span>Tam tinh: {{ order.subtotal || 0 }} đ</span>
         </div>
         <div class="meta status-row">
           <span>
@@ -45,7 +49,6 @@ export default {
   data() {
     return {
       orders: [],
-      products: [],
     };
   },
   methods: {
@@ -53,12 +56,8 @@ export default {
       const email = localStorage.getItem("email");
       if (!email) return;
       try {
-        const [orderRes, productRes] = await Promise.all([
-          API.order.get(`/user/${email}`),
-          API.restaurant.get("/"),
-        ]);
+        const orderRes = await API.order.get(`/user/${email}`);
         this.orders = orderRes.data;
-        this.products = productRes.data;
       } catch (err) {
         console.error("❌ Failed to fetch orders:", err);
       }
@@ -86,9 +85,16 @@ export default {
     formatDate(d) {
       return new Date(d).toLocaleString("en-US");
     },
-    getProductName(id) {
-      const found = this.products.find((p) => p._id === id);
-      return found ? found.name : id;
+    getOrderTitle(order) {
+      if (!order.items || order.items.length === 0) {
+        return "Don hang";
+      }
+
+      if (order.items.length === 1) {
+        return order.items[0].productName;
+      }
+
+      return `${order.items[0].productName} +${order.items.length - 1} mon`;
     },
   },
   mounted() {

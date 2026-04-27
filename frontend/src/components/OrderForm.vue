@@ -1,28 +1,43 @@
 <template>
   <div class="order-form fade-up">
-    <h2>Tao don hang</h2>
+    <h2>Gio hang</h2>
 
-    <select v-model="selectedProductId" @change="updateSelectedProduct" class="input">
-      <option disabled value="">-- Chon mon an --</option>
-      <option v-for="p in products" :key="p._id" :value="p._id">
-        {{ p.name }} ({{ p.price }} đ)
-      </option>
-    </select>
+    <div v-if="cart.length === 0" class="empty">Gio hang dang trong.</div>
 
-    <input type="number" v-model.number="quantity" placeholder="So luong" min="1" class="input" />
+    <ul v-else class="cart-list">
+      <li v-for="item in cart" :key="item.productId" class="cart-item">
+        <div>
+          <strong>{{ item.productName }}</strong>
+          <p>{{ item.unitPrice }} đ x {{ item.quantity }}</p>
+        </div>
+        <div class="qty-actions">
+          <button @click="changeQty(item.productId, -1)">-</button>
+          <span>{{ item.quantity }}</span>
+          <button @click="changeQty(item.productId, 1)">+</button>
+        </div>
+      </li>
+    </ul>
+
     <input
       v-model="deliveryAddress"
       placeholder="Dia chi giao hang (VD: 123 Nguyen Trai, Quan 5)"
       class="input"
     />
+    <select v-model="paymentMethod" class="input">
+      <option value="cash">Tien mat</option>
+      <option value="card">The</option>
+      <option value="wallet">Vi dien tu</option>
+    </select>
 
-    <div v-if="selectedProduct" class="info">
-      <strong>Mo ta:</strong> {{ selectedProduct.description }} <br />
-      <strong>Don gia:</strong> {{ selectedProduct.price }} đ <br />
+    <div v-if="cart.length > 0" class="info">
+      <strong>Tam tinh:</strong> {{ subtotal }} đ <br />
+      <strong>Phi giao hang:</strong> {{ deliveryFee }} đ <br />
       <strong>Tong tien:</strong> <span class="price">{{ totalPrice }} đ</span>
     </div>
 
-    <button @click="submitOrder" class="button">Tao don</button>
+    <button @click="submitOrder" class="button" :disabled="cart.length === 0">
+      Dat hang va thanh toan
+    </button>
     <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
   </div>
 </template>
@@ -33,22 +48,36 @@ import API from "../api";
 export default {
   data() {
     return {
-      quantity: 1,
-      selectedProductId: "",
-      selectedProduct: null,
-      products: [],
+      cart: [],
       deliveryAddress: "",
+      paymentMethod: "cash",
+      deliveryFee: 15000,
       errorMsg: "",
     };
   },
   computed: {
+    subtotal() {
+      return this.cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+    },
     totalPrice() {
-      return this.selectedProduct ? this.selectedProduct.price * this.quantity : 0;
+      return this.subtotal + this.deliveryFee;
     },
   },
   methods: {
-    updateSelectedProduct() {
-      this.selectedProduct = this.products.find((p) => p._id === this.selectedProductId);
+    loadCart() {
+      this.cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    },
+    changeQty(productId, delta) {
+      const found = this.cart.find((item) => item.productId === productId);
+      if (!found) return;
+
+      found.quantity += delta;
+      if (found.quantity <= 0) {
+        this.cart = this.cart.filter((item) => item.productId !== productId);
+      }
+
+      localStorage.setItem("cart", JSON.stringify(this.cart));
+      window.dispatchEvent(new Event("cart-updated"));
     },
     async submitOrder() {
       this.errorMsg = "";
@@ -59,12 +88,8 @@ export default {
         return;
       }
 
-      if (!this.selectedProduct) {
-        this.errorMsg = "❌ Please select a service!";
-        return;
-      }
-      if (this.quantity < 1) {
-        this.errorMsg = "❌ Quantity must be greater than 0!";
+      if (this.cart.length === 0) {
+        this.errorMsg = "❌ Gio hang dang trong";
         return;
       }
 
@@ -76,9 +101,11 @@ export default {
       try {
         const orderRes = await API.order.post("/", {
           userEmail: email,
-          productId: this.selectedProductId,
-          quantity: this.quantity,
-          totalPrice: this.totalPrice,
+          items: this.cart.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          })),
+          deliveryFee: this.deliveryFee,
           deliveryAddress: this.deliveryAddress,
         });
         alert("✅ Order created successfully! Order ID: " + orderRes.data._id);
@@ -86,28 +113,27 @@ export default {
         await API.payment.post("/", {
           orderId: orderRes.data._id,
           amount: this.totalPrice,
+          method: this.paymentMethod,
         });
         alert("✅ Payment successful!");
 
-        // Reset form
-        this.selectedProductId = "";
-        this.selectedProduct = null;
-        this.quantity = 1;
+        localStorage.removeItem("cart");
+        this.cart = [];
         this.deliveryAddress = "";
         window.dispatchEvent(new Event("order-updated"));
+        window.dispatchEvent(new Event("cart-updated"));
       } catch (err) {
         console.error("❌ Error creating order:", err);
         this.errorMsg = err.response?.data?.error || "Order creation failed!";
       }
     },
   },
-  async mounted() {
-    try {
-      const res = await API.restaurant.get("/");
-      this.products = res.data;
-    } catch (err) {
-      console.error("❌ Error loading service list:", err);
-    }
+  mounted() {
+    this.loadCart();
+    window.addEventListener("cart-updated", this.loadCart);
+  },
+  beforeUnmount() {
+    window.removeEventListener("cart-updated", this.loadCart);
   },
 };
 </script>
@@ -122,6 +148,46 @@ export default {
   padding: 20px;
   border-radius: 14px;
   text-align: left;
+}
+
+.cart-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+  display: grid;
+  gap: 8px;
+}
+
+.cart-item {
+  border: 1px solid #d7e5f2;
+  border-radius: 10px;
+  padding: 10px;
+  background: #f8fbff;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.cart-item p {
+  margin-top: 2px;
+  color: #5f6f85;
+  font-size: 0.9rem;
+}
+
+.qty-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qty-actions button {
+  border: 1px solid #cad8e4;
+  background: #ffffff;
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
 }
 
 h2 {
@@ -180,5 +246,10 @@ h2 {
 
 .price {
   color: #0f9d5d;
+}
+
+.empty {
+  color: #5f6f85;
+  margin: 6px 0 10px;
 }
 </style>

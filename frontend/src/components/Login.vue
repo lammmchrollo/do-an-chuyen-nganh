@@ -34,7 +34,8 @@ export default {
           password: this.password,
         });
         localStorage.setItem("token", res.data.token);
-        localStorage.setItem("email", this.email);
+        localStorage.setItem("email", res.data.user.email);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
         alert("✅ Logged in successfully!");
         this.$router.push("/dashboard");
       } catch (err) {

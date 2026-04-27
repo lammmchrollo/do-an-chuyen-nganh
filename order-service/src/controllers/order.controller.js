@@ -49,23 +49,97 @@ async function tryAssignDriver(order) {
   }
 }
 
+const ORDER_TRANSITIONS = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["preparing", "cancelled"],
+  preparing: ["ready", "cancelled"],
+  ready: ["delivering", "waiting_for_driver", "cancelled"],
+  waiting_for_driver: ["delivering", "cancelled"],
+  delivering: ["completed", "cancelled"],
+  completed: [],
+  cancelled: [],
+};
+
+function isValidTransition(currentStatus, nextStatus) {
+  if (currentStatus === nextStatus) {
+    return true;
+  }
+
+  return ORDER_TRANSITIONS[currentStatus]?.includes(nextStatus) || false;
+}
+
+async function getProductById(productId) {
+  const response = await axios.get(`http://restaurant-service:4002/api/restaurants/${productId}`);
+  return response.data;
+}
+
 exports.createOrder = async (req, res) => {
-  const { userEmail, productId, quantity, totalPrice, deliveryAddress } = req.body;
+  const { userEmail, items, deliveryAddress, deliveryFee } = req.body;
 
   try {
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "items is required" });
+    }
+
     const check = await axios.get(`http://user-service:4001/api/users/check/${userEmail}`);
     if (!check.data.exists) {
       return res.status(400).json({ error: "User email does not exist!" });
     }
 
+    const hydratedItems = await Promise.all(
+      items.map(async (item) => {
+        const qty = Number(item.quantity) || 0;
+        if (!item.productId || qty < 1) {
+          throw new Error("Invalid productId or quantity");
+        }
+
+        const product = await getProductById(item.productId);
+
+        if (product.isAvailable === false) {
+          throw new Error(`Product ${product._id} is unavailable`);
+        }
+
+        const total = product.price * qty;
+
+        return {
+          productId: product._id.toString(),
+          productName: product.name,
+          unitPrice: product.price,
+          quantity: qty,
+          total,
+          restaurantId: product.restaurantId?._id?.toString() || product.restaurantId?.toString() || "",
+        };
+      })
+    );
+
+    const subtotal = hydratedItems.reduce((sum, item) => sum + item.total, 0);
+    const restaurantIds = [...new Set(hydratedItems.map((item) => item.restaurantId))];
+
+    if (restaurantIds.length > 1) {
+      return res
+        .status(400)
+        .json({ error: "All items in one order must belong to the same restaurant" });
+    }
+
+    const normalizedDeliveryFee = Number(deliveryFee) >= 0 ? Number(deliveryFee) : 15000;
+    const totalPrice = subtotal + normalizedDeliveryFee;
+
     const order = new Order({
       userEmail,
-      productId,
-      quantity,
+      restaurantId: restaurantIds[0] || "",
+      items: hydratedItems.map((item) => ({
+        productId: item.productId,
+        productName: item.productName,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+        total: item.total,
+      })),
+      subtotal,
+      deliveryFee: normalizedDeliveryFee,
       totalPrice,
       deliveryAddress,
       status: "pending",
-      paymentStatus: "paid",
+      paymentStatus: "unpaid",
     });
     await order.save();
 
@@ -78,13 +152,28 @@ exports.createOrder = async (req, res) => {
     res.status(201).json(order);
   } catch (err) {
     console.error("Error creating order:", err.message);
-    res.status(500).json({ error: "Server error or unable to connect to user-service" });
+    res.status(500).json({ error: "Server error or unable to create order" });
   }
 };
 
 exports.getAllOrders = async (req, res) => {
-  const orders = await Order.find().sort({ createdAt: -1 });
-  res.json(orders);
+  try {
+    const { restaurantId, status } = req.query;
+    const query = {};
+
+    if (restaurantId) {
+      query.restaurantId = restaurantId;
+    }
+
+    if (status) {
+      query.status = status;
+    }
+
+    const orders = await Order.find(query).sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ error: "Cannot get orders" });
+  }
 };
 
 exports.getOrderById = async (req, res) => {
@@ -120,6 +209,12 @@ exports.updateOrderStatus = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
+    }
+
+    if (!isValidTransition(order.status, status)) {
+      return res.status(400).json({
+        error: `Invalid transition from ${order.status} to ${status}`,
+      });
     }
 
     let assignment = null;
@@ -194,5 +289,33 @@ exports.dispatchOrder = async (req, res) => {
   } catch (err) {
     console.error("Dispatch order error:", err.message);
     res.status(500).json({ error: "Cannot dispatch order" });
+  }
+};
+
+exports.markPaymentStatus = async (req, res) => {
+  try {
+    const { paymentStatus } = req.body;
+    const allowed = ["unpaid", "paid", "refunded"];
+
+    if (!allowed.includes(paymentStatus)) {
+      return res.status(400).json({ error: "Invalid paymentStatus" });
+    }
+
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { paymentStatus },
+      { new: true }
+    );
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    res.json({
+      message: "Payment status updated",
+      order,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Cannot update payment status" });
   }
 };

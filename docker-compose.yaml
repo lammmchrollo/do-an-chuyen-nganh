@@ -56,6 +56,12 @@ services:
     container_name: payment-service
     ports:
       - "4004:4004"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/paymentservice
+      - ORDER_SERVICE_URL=http://order-service:4003
+    depends_on:
+      - mongodb
+      - order-service
     networks:
       - osm-network
     restart: always

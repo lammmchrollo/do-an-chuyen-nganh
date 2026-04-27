@@ -4,8 +4,14 @@
       <h2>Dang ky</h2>
       <p class="sub">Tao tai khoan moi de bat dau dat don.</p>
 
+      <input v-model="name" placeholder="Ho va ten" class="input" />
       <input v-model="email" placeholder="Email" class="input" />
       <input v-model="password" type="password" placeholder="Password" class="input" />
+      <select v-model="role" class="input">
+        <option value="customer">Customer</option>
+        <option value="restaurant">Restaurant</option>
+        <option value="driver">Driver</option>
+      </select>
 
       <button @click="register" class="button">Dang ky</button>
       <router-link to="/login" class="link">Da co tai khoan? Dang nhap</router-link>
@@ -20,8 +26,10 @@ import API from "../api";
 export default {
   data() {
     return {
+      name: "",
       email: "",
       password: "",
+      role: "customer",
       error: "",
     };
   },
@@ -32,17 +40,30 @@ export default {
     },
     async register() {
       this.error = "";
+      if (!this.name.trim()) {
+        this.error = "❌ Vui long nhap ho ten";
+        return;
+      }
+
       if (!this.isEmailValid(this.email)) {
         this.error = "❌ Invalid email!";
         return;
       }
+
+      if (this.password.length < 6) {
+        this.error = "❌ Password can it nhat 6 ky tu";
+        return;
+      }
+
       try {
         await API.user.post("/register", {
+          name: this.name,
           email: this.email,
           password: this.password,
+          role: this.role,
         });
         alert("✅ Registration successful!");
-        this.$router.push("/");
+        this.$router.push("/login");
       } catch (err) {
         this.error = err.response?.data?.error || "Registration failed!";
       }

@@ -73,6 +73,7 @@ export default {
       loading: true,
       trackedOrders: [],
       drivers: [],
+      pollTimer: null,
     };
   },
   methods: {
@@ -151,13 +152,24 @@ export default {
 
       return "Dang cap nhat";
     },
+    setupRealtime() {
+      // Short-polling fallback for near real-time updates without requiring websockets.
+      this.pollTimer = setInterval(() => {
+        this.fetchTrackingData();
+      }, 10000);
+    },
   },
   mounted() {
     this.fetchTrackingData();
+    this.setupRealtime();
     window.addEventListener("order-updated", this.fetchTrackingData);
   },
   beforeUnmount() {
     window.removeEventListener("order-updated", this.fetchTrackingData);
+
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+    }
   },
 };
 </script>

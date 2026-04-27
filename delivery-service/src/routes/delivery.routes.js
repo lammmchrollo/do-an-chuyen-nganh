@@ -9,6 +9,7 @@ router.patch("/drivers/:id/status", controller.updateDriverStatus);
 router.post("/assign", controller.assignDriver);
 router.get("/", controller.getAllDeliveries);
 router.get("/order/:orderId", controller.getDeliveryByOrderId);
+router.patch("/order/:orderId/status", controller.updateDeliveryStatusByOrderId);
 router.get("/:id", controller.getDeliveryById);
 router.patch("/:id/status", controller.updateDeliveryStatus);
 

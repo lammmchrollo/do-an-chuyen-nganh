@@ -1,126 +1,211 @@
-# Hệ thống Microservices Giao Đồ Ăn (Food Delivery Platform)
+# He thong Microservices Giao Do An
 
-Dự án này điều chỉnh kiến trúc mẫu từ Online Service Marketplace sang nghiệp vụ Giao đồ ăn (Food Delivery), đồng thời triển khai hoàn toàn trên nền tảng Microservices, hỗ trợ Docker, Kubernetes và CI/CD với Jenkins.
+Du an xay dung nen tang dat do an theo kien truc microservices, co day du luong nghiep vu:
 
-## 1. Phạm vi công việc của nhóm
+- Khach hang: tim nha hang, chon mon, gio hang, dat don, theo doi trang thai don.
+- Nha hang: quan ly menu, nhan/tu choi don, cap nhat tien do xu ly don.
+- Van chuyen: gan tai xe ngau nhien trong danh sach ranh, cap nhat trang thai giao.
+- Thanh toan: mo phong thanh cong/that bai va hoan tien (refund).
+- Thong bao: luu lich su thong bao, day su kien qua Socket.io; frontend su dung short-polling de cap nhat UI theo thoi gian gan thuc.
 
-- **DevOps (Khánh)**: Docker, Kubernetes, Jenkins, cấu hình MongoDB, API Gateway (Nginx).
-- **Frontend (Kiên)**: Giao diện người dùng (Vue.js), tích hợp API, cập nhật thời gian thực (Real-time tracking).
-- **Backend User + Restaurant (Hưng)**: Quản lý Authentication/Authorization, tài khoản, nhà hàng và menu.
-- **Backend Order + Payment (Q.Khánh)**: Vòng đời đơn hàng, mô phỏng chức năng thanh toán.
-- **Backend Delivery + Notification (Lâm)**: Quản lý tài xế, theo dõi tiến độ giao hàng, gửi thông báo qua Socket.io.
+## 1. Cong nghe
 
-## 2. Kiến trúc & Bản đồ Service
+- Frontend: Vue 3, Vite, Vue Router, Axios.
+- Backend: Node.js, Express.js.
+- Auth: JWT, bcrypt.
+- Database: MongoDB, Mongoose.
+- Realtime/near realtime: Socket.io (backend notification) + polling tren frontend.
+- Ha tang: Docker Compose, Kubernetes manifests, Jenkins pipeline.
 
-Luồng xử lý Request mặc định:
-`Frontend -> API Gateway (Nginx) -> Từng Service đích -> MongoDB`
+## 2. Kien truc tong quan
 
-Luồng xử lý Real-time:
-`Cập nhật trạng thái đơn hàng (Order/Delivery Service) -> Notification Service -> Broadcast Socket.io -> Frontend`
+Luong request chinh:
 
-### Danh sách các Microservices:
-- **`user-service`** (`4001`): Quản lý tài khoản và phân quyền.
-- **`restaurant-service`** (`4002`): Quản lý quán ăn và thực đơn.
-- **`order-service`** (`4003`): Quản lý vòng đời đặt món của người dùng.
-- **`payment-service`** (`4004`): Xử lý mô phỏng thanh toán đơn hàng.
-- **`delivery-service`** (`4005`): Gán tài xế, quản lý toạ độ và trạng thái giao hàng.
-- **`notification-service`** (`4006`): Lưu lịch sử thông báo và đẩy tin nhắn realtime qua Socket.io.
-- **`gateway`** (`80`): Cổng dẫn duy nhất ra bên ngoài (Reverse Proxy).
-- **`frontend`** (`80`): Giao diện người dùng.
+Frontend -> Gateway (Nginx) -> Backend service dich -> MongoDB
 
-> **Cơ sở dữ liệu:** Hệ thống dùng chung **MongoDB** (Port `27017` trên local). Các cấu hình service đã được chuẩn hóa tên miền theo `restaurant-service`.
+Luong cap nhat trang thai:
 
-## 3. Cổng API (API Gateway)
+Order/Delivery update -> Notification service -> luu notification va emit event -> Frontend polling lay du lieu moi
 
-Gateway có nhiệm vụ phân luồng request cho các service tương ứng bằng prefix:
+## 3. Danh sach service
 
-- `/api/users/*` ➔ `user-service:4001`
-- `/api/restaurants/*` ➔ `restaurant-service:4002`
-- `/api/orders/*` ➔ `order-service:4003`
-- `/api/payments/*` ➔ `payment-service:4004`
-- `/api/deliveries/*` ➔ `delivery-service:4005`
-- `/api/notifications/*` ➔ `notification-service:4006`
-- `/socket.io/*` ➔ `notification-service:4006` (Hỗ trợ nâng cấp kết nối WebSocket)
+- user-service (4001): Dang ky, dang nhap, profile, role.
+- restaurant-service (4002): CRUD nha hang, CRUD menu.
+- order-service (4003): Tao don, tinh tong tien, vong doi don hang.
+- payment-service (4004): Thanh toan mo phong, refund, luu lich su payment.
+- delivery-service (4005): Driver status, assign driver, delivery progress.
+- notification-service (4006): Tao/lay notification, Socket.io broadcast.
+- frontend: ung dung Vue.
+- gateway (80): API gateway ra ben ngoai.
+- mongodb (27017): du lieu cho cac service.
 
-## 4. Chi tiết API Delivery & Notification
+## 4. API Gateway mapping
 
-### Delivery Service
-- `GET /api/deliveries/drivers`: Lấy danh sách tài xế
-- `POST /api/deliveries/drivers`: Đăng ký tài xế mới
-- `PATCH /api/deliveries/drivers/:id/status`: Cập nhật trạng thái tài xế (Available/Busy)
-- `GET /api/deliveries`: Xem danh sách tất cả các cuốc giao
-- `POST /api/deliveries/assign`: Điều phối/Gán tài xế cho đơn hàng
-- `GET /api/deliveries/order/:orderId`: Xem thông tin giao đồ ăn của đơn
-- `PATCH /api/deliveries/:id/status`: Cập nhật lộ trình (Pickup, In transit, Delivered)
+- /api/users/* -> user-service:4001
+- /api/restaurants/* -> restaurant-service:4002
+- /api/orders/* -> order-service:4003
+- /api/payments/* -> payment-service:4004
+- /api/deliveries/* -> delivery-service:4005
+- /api/notifications/* -> notification-service:4006
+- /socket.io/* -> notification-service:4006
 
-### Notification Service
-- `POST /api/notifications`: Tạo một thông báo mới
-- `GET /api/notifications`: Xem tất cả thông báo
-- `GET /api/notifications/order/:orderId`: Các thông báo thuộc về 1 đơn hàng cụ thể
-- `PATCH /api/notifications/:id/read`: Đánh dấu là đã đọc
+## 5. Nghiep vu da hoan thien
 
-**Sự kiện Socket.io (WebSocket):**
-- Event `order-status-changed`: Bắn về cho Client khi đơn hàng chuyển các trạng thái chờ nấu, đang giao, đã giao.
+### 5.1 User Service
 
-## 5. Hướng dẫn chạy môi trường Local (Docker Compose)
+- Dang ky user voi name, email, password, role.
+- Role co ban: customer, restaurant, driver.
+- Password duoc ma hoa bang bcrypt.
+- Dang nhap tra JWT co thong tin role.
+- Lay profile user qua endpoint xac thuc token.
 
-Khởi động tất cả các dịch vụ:
+API chinh:
+
+- POST /api/users/register
+- POST /api/users/login
+- GET /api/users/me
+- GET /api/users/check/:email
+
+### 5.2 Restaurant Service
+
+- Quan ly danh sach nha hang.
+- Quan ly menu theo tung nha hang.
+- Tim kiem nha hang/mon an theo tu khoa.
+- Co trang thai mon an isAvailable de tam an/mo ban.
+
+API chinh:
+
+- GET /api/restaurants/restaurants
+- POST /api/restaurants/restaurants
+- PUT /api/restaurants/restaurants/:id
+- DELETE /api/restaurants/restaurants/:id
+- GET /api/restaurants/restaurants/:id/menus
+- GET /api/restaurants
+- POST /api/restaurants
+- PUT /api/restaurants/:id
+- DELETE /api/restaurants/:id
+
+### 5.3 Order Service
+
+- Tao don theo danh sach items.
+- Tu dong tinh subtotal, deliveryFee, totalPrice.
+- Kiem tra cac item trong cung 1 nha hang.
+- Vong doi don hang:
+  pending -> confirmed -> preparing -> ready -> delivering -> completed
+
+Trang thai mo rong:
+
+- waiting_for_driver
+- cancelled
+
+API chinh:
+
+- POST /api/orders
+- GET /api/orders
+- GET /api/orders/:id
+- GET /api/orders/user/:email
+- PATCH /api/orders/:id/status
+- PATCH /api/orders/:id/dispatch
+- PATCH /api/orders/:id/payment-status
+
+### 5.4 Payment Service
+
+- Mo phong thanh toan thanh cong/that bai.
+- Hoan tien cho don da thanh toan.
+- Luu collection Payments trong DB rieng.
+- Dong bo paymentStatus ve order-service.
+
+API chinh:
+
+- POST /api/payments
+- POST /api/payments/refund
+- GET /api/payments
+
+### 5.5 Delivery Service
+
+- Quan ly tai xe va trang thai tai xe (available/busy/offline).
+- Gan tai xe random trong danh sach available.
+- Cap nhat trang thai giao hang theo delivery id hoac theo order id.
+
+API chinh:
+
+- GET /api/deliveries/drivers
+- POST /api/deliveries/drivers
+- PATCH /api/deliveries/drivers/:id/status
+- POST /api/deliveries/assign
+- GET /api/deliveries
+- GET /api/deliveries/order/:orderId
+- PATCH /api/deliveries/:id/status
+- PATCH /api/deliveries/order/:orderId/status
+
+### 5.6 Notification Service
+
+- Tao notification khi don doi trang thai.
+- Lay notification theo order hoac toan bo.
+- Socket.io emit event order-status-changed.
+
+API chinh:
+
+- POST /api/notifications
+- GET /api/notifications
+- GET /api/notifications/order/:orderId
+- PATCH /api/notifications/:id/read
+
+## 6. Frontend da trien khai
+
+### Khach hang
+
+- Tim nha hang/mon an.
+- Them mon vao gio hang.
+- Dat don va thanh toan.
+- Xem lich su don hang.
+- Theo doi giao hang theo polling dinh ky (khong can reload trang).
+
+### Nha hang
+
+- Chon/tao nha hang.
+- Them, an/hien, xoa mon an.
+- Nhan don, cap nhat tien do, tu choi don.
+- Tu dong goi refund neu tu choi don da paid.
+
+## 7. Chay local bang Docker Compose
+
+Khoi dong toan bo he thong:
+
 ```bash
 docker compose up -d --build
 ```
-Kiểm tra trạng thái các container:
+
+Kiem tra container:
+
 ```bash
 docker compose ps
 ```
-Gọi API thử nghiệm:
+
+Truy cap:
+
+- Frontend qua gateway: http://localhost
+- API gateway base: http://localhost/api
+
+Dung he thong:
+
 ```bash
-curl http://localhost/api/deliveries/drivers
-curl http://localhost/api/notifications
-```
-Dừng hệ thống: `docker compose down`
-
-## 6. Hướng dẫn triển khai lên Kubernetes (K8s)
-
-Hệ thống cung cấp sẵn các file manifests để chạy trong cụm K8s tại thư mục `/k8s`.
-Thứ tự apply:
-
-1. **Khởi tạo Namespace**:
-   ```bash
-   kubectl apply -f k8s/namespace.yaml
-   ```
-2. **Deploy MongoDB**:
-   ```bash
-   kubectl apply -f k8s/mongo.yaml
-   ```
-3. **Deploy Backend Services**:
-   ```bash
-   kubectl apply -f k8s/user.yaml
-   kubectl apply -f k8s/restaurant.yaml
-   kubectl apply -f k8s/order.yaml
-   kubectl apply -f k8s/payment.yaml
-   ```
-   *(Thêm các file yaml ứng với `delivery` và `notification` nếu có)*
-   
-4. **Deploy Frontend & Nginx Gateway**:
-   ```bash
-   kubectl apply -f k8s/frontend.yaml
-   kubectl apply -f k8s/nginx.yaml
-   ```
-   
-Kiểm tra pod:
-```bash
-kubectl get pods -n <food-delivery-namespace>
+docker compose down
 ```
 
-## 7. Quy trình CI/CD với Jenkins
+## 8. Test nhanh nghiep vu
 
-Hệ thống có cấu hình pipeline Jenkins ở `Jenkinsfile` và `script.groovy`.
-Khi code được đẩy lên nhánh chính (Main/Master), Jenkins sẽ tự động thực hiện:
+1. Dang ky customer va dang nhap.
+2. Tim nha hang, them mon vao gio, dat don.
+3. Kiem tra payment duoc tao va order paymentStatus = paid.
+4. Dang ky/ dang nhap role restaurant, vao dashboard nha hang.
+5. Nhan don -> preparing -> ready (he thong thu gan tai xe).
+6. Theo doi trong man hinh tracking cua customer.
+7. Thu tu choi don paid tu restaurant dashboard de kiem tra refund.
 
-1. **Checkout Code**: Lấy file mới nhất từ Git.
-2. **Build and Push Docker Images**: 
-   - Build image cho tất cả backend/frontend.
-   - Tag theo bản update `latest` và đẩy lên Docker Hub (`nguyenducmanh247/*`).
-3. **Deploy to Kubernetes**:
-   - Chạy lệnh kubectl apply -f thư mục `k8s/` để nâng cấp cụm.
-4. **Verify Deployment**: Kiểm tra và đảm bảo các Rollout trạng thái là *healthy*.
+## 9. Kubernetes va Jenkins
+
+- Thu muc k8s chua cac manifest de deploy len Kubernetes.
+- Jenkinsfile va script.groovy dung cho pipeline CI/CD build image va deploy.
+
+Luu y: Can cap nhat image tag, namespace va secret theo moi truong thuc te truoc khi deploy production.

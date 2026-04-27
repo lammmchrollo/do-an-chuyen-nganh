@@ -48,6 +48,11 @@ exports.createDriver = async (req, res) => {
 exports.updateDriverStatus = async (req, res) => {
   try {
     const { status, currentLocation } = req.body;
+    const allowed = ["available", "busy", "offline"];
+
+    if (status && !allowed.includes(status)) {
+      return res.status(400).json({ error: "Invalid driver status" });
+    }
 
     const driver = await Driver.findByIdAndUpdate(
       req.params.id,
@@ -194,6 +199,19 @@ exports.getDeliveryByOrderId = async (req, res) => {
 exports.updateDeliveryStatus = async (req, res) => {
   try {
     const { status } = req.body;
+    const allowed = [
+      "searching_driver",
+      "assigned",
+      "accepted",
+      "picked_up",
+      "on_the_way",
+      "delivered",
+      "cancelled",
+    ];
+
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ error: "Invalid delivery status" });
+    }
 
     const delivery = await Delivery.findByIdAndUpdate(
       req.params.id,
@@ -224,5 +242,20 @@ exports.updateDeliveryStatus = async (req, res) => {
   } catch (err) {
     console.error("Update delivery status error:", err);
     res.status(500).json({ error: "Cannot update delivery status" });
+  }
+};
+
+exports.updateDeliveryStatusByOrderId = async (req, res) => {
+  try {
+    const delivery = await Delivery.findOne({ orderId: req.params.orderId });
+
+    if (!delivery) {
+      return res.status(404).json({ error: "Delivery not found" });
+    }
+
+    req.params.id = delivery._id;
+    return exports.updateDeliveryStatus(req, res);
+  } catch (err) {
+    res.status(500).json({ error: "Cannot update delivery by orderId" });
   }
 };

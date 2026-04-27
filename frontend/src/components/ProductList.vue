@@ -1,14 +1,29 @@
 <template>
   <div class="product-list fade-up">
-    <h2>Danh sach dich vu</h2>
-    <p class="intro">Chon dich vu phu hop, tao don nhanh va theo doi trang thai theo thoi gian thuc.</p>
-    <div class="grid">
-      <article v-for="p in products" :key="p._id" class="product-card">
+    <h2>Tim nha hang va chon mon</h2>
+    <p class="intro">Tim theo ten nha hang/mon an, them vao gio de tao don nhanh.</p>
+
+    <div class="search-row">
+      <input v-model="keyword" @input="loadData" class="search-input" placeholder="Tim nha hang, mon an..." />
+      <select v-model="selectedRestaurantId" @change="loadMenus" class="search-input">
+        <option value="">Tat ca nha hang</option>
+        <option v-for="r in restaurants" :key="r._id" :value="r._id">{{ r.name }}</option>
+      </select>
+    </div>
+
+    <div class="grid" v-if="menus.length > 0">
+      <article v-for="p in menus" :key="p._id" class="product-card">
+        <p class="restaurant-name">{{ p.restaurantId?.name || 'Nha hang' }}</p>
         <h3>{{ p.name }}</h3>
         <p>{{ p.description }}</p>
-        <strong>{{ p.price }} đ</strong>
+        <div class="foot">
+          <strong>{{ p.price }} đ</strong>
+          <button @click="addToCart(p)">Them vao gio</button>
+        </div>
       </article>
     </div>
+
+    <p v-else class="empty">Khong tim thay mon an phu hop.</p>
   </div>
 </template>
 
@@ -17,15 +32,57 @@ import API from "../api";
 
 export default {
   data() {
-    return { products: [] };
+    return {
+      keyword: "",
+      selectedRestaurantId: "",
+      restaurants: [],
+      menus: [],
+    };
   },
-  async mounted() {
-    try {
-      const res = await API.restaurant.get("/");
-      this.products = res.data;
-    } catch (err) {
-      console.error("❌ Failed to load the service list:", err);
-    }
+  methods: {
+    async loadData() {
+      try {
+        const [restaurantRes, menuRes] = await Promise.all([
+          API.restaurant.get("/restaurants", { params: { q: this.keyword } }),
+          API.restaurant.get("/", {
+            params: {
+              q: this.keyword,
+              restaurantId: this.selectedRestaurantId || undefined,
+            },
+          }),
+        ]);
+
+        this.restaurants = restaurantRes.data;
+        this.menus = menuRes.data;
+      } catch (err) {
+        console.error("Cannot load restaurants/menus", err);
+      }
+    },
+    async loadMenus() {
+      await this.loadData();
+    },
+    addToCart(product) {
+      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+      const existed = cart.find((item) => item.productId === product._id);
+
+      if (existed) {
+        existed.quantity += 1;
+      } else {
+        cart.push({
+          productId: product._id,
+          productName: product.name,
+          unitPrice: product.price,
+          quantity: 1,
+          restaurantId: product.restaurantId?._id || product.restaurantId,
+        });
+      }
+
+      localStorage.setItem("cart", JSON.stringify(cart));
+      window.dispatchEvent(new Event("cart-updated"));
+    },
+  },
+  mounted() {
+    this.loadData();
   },
 };
 </script>
@@ -45,6 +102,21 @@ h2 {
 .intro {
   margin-top: 8px;
   color: #5a6778;
+}
+
+.search-row {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 10px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #cad8e4;
+  background: #f8fbff;
 }
 
 .grid {
@@ -76,14 +148,49 @@ h2 {
   color: #ffe08a;
 }
 
+.restaurant-name {
+  color: #a6ecff;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .product-card p {
   color: #d5deea;
   font-size: 0.95rem;
   flex: 1;
 }
 
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.foot button {
+  border: none;
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #cffce5;
+  color: #14532d;
+}
+
 .product-card strong {
   color: #62f0ad;
   font-size: 1.02rem;
+}
+
+.empty {
+  margin-top: 14px;
+  color: #5a6778;
+}
+
+@media (max-width: 800px) {
+  .search-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

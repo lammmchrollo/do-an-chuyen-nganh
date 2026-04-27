@@ -1,11 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const { processPayment } = require("../controllers/payment.controller");
+const {
+  processPayment,
+  refundPayment,
+  getAllPayments,
+} = require("../controllers/payment.controller");
 
 router.post("/", processPayment);
-
-router.get("/", (req, res) => {
-  res.json([{ status: "paid", orderId: "example123" }]);
-});
+router.post("/refund", refundPayment);
+router.get("/", getAllPayments);
 
 module.exports = router;
